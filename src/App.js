@@ -1,19 +1,53 @@
 import logo from './logo.jpg';
 import React, { useState } from 'react';
+import DynamicSelect from './components/DynamicSelect';
 import './App.css';
 import * as XLSX from 'xlsx';
 import _ from 'lodash';
 import moment from 'moment';
 
 function App() {
-  const [chefTime, setChefTime] = useState('');
+  const [dateOptions, setDateOptions] = useState([]);
+  const [timeOptions, setTimeOptions] = useState([]);
   const [time, setTime] = useState('');
-  const handleChange = (event) => {
-    setChefTime(event.target.value);
+  const [date, setDate] = useState('');
+  const [fileData, setFileData] = useState([]);
+  const [addressPartArr, setAddressPartArr] = useState([]);
+
+  const handleClickButton = () => {
+    // 按日期和时间段筛选数据
+    const filteredData = _.sortBy(_.filter(fileData, item => {
+      return item[ORDER_EXTRA_INFO.DATE] === date && item[ORDER_EXTRA_INFO.TIME] === time;
+    }), ORDER_EXTRA_INFO.ADDRESSPART);
+    let merges = [];
+    let currentMergeStart = 1; // 当前订单开始行
+    let productData = [];
+    const data = filteredData.flatMap(item => {
+      const mergeEnd = currentMergeStart + item.products.length - 1
+      merges.push({ s: { r: currentMergeStart }, e: { r: mergeEnd }});
+      currentMergeStart = mergeEnd + 1;
+      let result = [];
+      productData.push(item.products[0]);
+      result.push(_.omit({...item, ...item.products[0]}, ['products']))
+      for (let i = 1; i < item.products.length; i++) {
+        result.push(item.products[i]);
+        productData.push(item.products[i]);
+      }
+      return result;
+    })
+    // 导出文件；
+    downloadFileToExcel(data, '订单表格', '', merges, `${date}${time}`);
+    dealProductData(productData, `${date}${time}`);
+  }
+
+  const handleTimeUpdate= (time) => {
+    setTime(time);
   };
-  const handleTimeChange = (event) => {
-    setTime(event.target.value);
+
+  const handleDateUpdate= (date) => {
+    setDate(date);
   };
+
   return (
     <div className="App">
       <header className="App-header">
@@ -21,24 +55,27 @@ function App() {
         <p>
           这是一个订单分解器，根据微信小程序下单助手官方生成的订单，分解成厨师、配送员、分拣员方便查看的三个订单数据。
         </p>
-        <label htmlFor="input">输入时间段:</label>
-        <input
-          id="input"
-          type="text"
-          value={time}
-          onChange={handleTimeChange}
-        />
-        <p>上传订单明细</p>
-        <input type='file' accept='.xlsx, .xls' onChange={e => onImportExcel(e, time)} />
-        <label htmlFor="input">输入时间段:</label>
-        <input
-          id="input"
-          type="text"
-          value={chefTime}
-          onChange={handleChange}
-        />
-        <p>上传商品表格</p>
-        <input type='file' accept='.xlsx, .xls' onChange={e => onImportProductsExcel(e, chefTime)} />
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={{ marginRight: '10px' }}>
+            <label>上传订单明细：</label>
+          </div>
+          <div>
+            <input type='file' accept='.xlsx, .xls' onChange={e => onImportExcel(e, setDateOptions, setTimeOptions, setFileData, setTime, setDate, setAddressPartArr)} />
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={{ marginRight: '10px' }}>
+            <label>选择日期：</label>
+          </div>
+          <DynamicSelect value={date} selectedOptions={dateOptions} onUpdate={handleDateUpdate} />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={{ marginRight: '10px' }}>
+            <label>选择时间段：</label>
+          </div>
+          <DynamicSelect value={time} selectedOptions={timeOptions} onUpdate={handleTimeUpdate} />
+        </div>
+        <button onClick={handleClickButton}>导出表格</button>
       </header>
     </div>
   );
@@ -57,6 +94,8 @@ const ORDER_EXTRA_INFO = {
   DATE: `送餐日期`,
   TIME:  `送餐时间`,
 }
+
+const PRODUCT_HEAERS = ['商品', '商品单价（元）', '购买数量'];
 
 const SHEETHEADER = [
   { name: '订单编号', cellWidth: 4, cellMergeNumber: 1, isMerge: 1 },
@@ -87,9 +126,10 @@ const SHEETHEADER_FOR_CHEF = [
   { name: '数量', cellWidth: 4, cellMergeNumber: 1, isMerge: 1 },
 ];
 
-const MERGES = [];
-
 const SHEETINFOS = {
+  '订单表格': { 
+    useless: ['顾客地址', '自提地址', '自提时间'],
+  },
   '分餐员表格': { 
     useless: ['顾客地址', '自提地址', '自提时间'],
   },
@@ -99,17 +139,13 @@ const SHEETINFOS = {
 };
 
 // 处理订单数据
-const dealData = (data, time) => {
+const dealData = (data, setDateOptions, setTimeOptions, setFileData, setTime, setDate, setAddressPartArr) => {
   let orderIndex = 0; // 当前具有订单编号的对象的下标
-  let currentMergeStart = 1; // 当前订单开始行
-  let count = 0; // 合并的行数（商品条数）
+  let dateOptions = [];
+  let timeOptions = [];
+  let addressPartArr = [];
   for (let i = 0; i < data.length; i++) {
     if (data[i][`订单编号`]) {
-      if (count) {
-        MERGES.push({ s: { r: currentMergeStart }, e: { r: currentMergeStart + count - 1}});
-      }
-      currentMergeStart = i+1;
-      count = 0;
       orderIndex = i;
       data[i][ORDER_EXTRA_INFO.ORDER_STATUS] = ORDER_STATUS_NAMES[1];
       data[i][ORDER_EXTRA_INFO.REASON] = '';
@@ -117,13 +153,16 @@ const dealData = (data, time) => {
       data[i][ORDER_EXTRA_INFO.ADDRESS] = '';
       data[i][ORDER_EXTRA_INFO.DATE] = '';
       data[i][ORDER_EXTRA_INFO.TIME] = '';
+      data[i].products = [_.pick(data[i], PRODUCT_HEAERS)];
       if (data[i][`订单金额（元）`] < 18.5) {
         data[i][ORDER_EXTRA_INFO.ORDER_STATUS] = ORDER_STATUS_NAMES[0];
         data[i][ORDER_EXTRA_INFO.REASON] = '订单金额不满18.5元';
       }
     }
     if (data[i][`商品`]) {
-      count ++;
+      if (data[i][`订单编号`] === undefined) {
+        data[orderIndex].products.push(data[i]);
+      }
     }
     if (data[i][`商品`] && data[i][`商品`].indexOf('送餐') !== -1) { // 处理送餐时间和送餐地址
       if (data[orderIndex][ORDER_EXTRA_INFO.ADDRESSPART]) {
@@ -136,6 +175,10 @@ const dealData = (data, time) => {
         const infoPart = _.trimEnd(splitParts[1], ')'); // 获取信息部分并去除多余的空格和括号
         const splitInfo = _.split(infoPart, ',')
         data[orderIndex][ORDER_EXTRA_INFO.ADDRESSPART] = addressPart;
+        // 获得地区数组
+        if (addressPartArr.indexOf(addressPart) === -1) {
+          addressPartArr.push(addressPart);
+        }
         const pattern = /\b\d{1,2}:\d{2}[ap]m-\d{1,2}:\d{2}[ap]m\b/; // 判断是否是配送时间格式
         let timeInfo = '';
         if (pattern.test(splitInfo[0])) {
@@ -146,6 +189,9 @@ const dealData = (data, time) => {
           timeInfo = splitInfo[1];
         }
         data[orderIndex][ORDER_EXTRA_INFO.TIME] = _.replace(timeInfo, '次日', '');
+        if (timeOptions.indexOf(data[orderIndex][ORDER_EXTRA_INFO.TIME]) === -1) {
+          timeOptions.push(data[orderIndex][ORDER_EXTRA_INFO.TIME]);
+        }
         const date = new Date(data[orderIndex][`订购时间`]); // 假设获取的日期为 2023/6/2 22:18:44
         // 使用 Moment.js 解析日期对象
         let momentDate = moment(date);
@@ -154,17 +200,22 @@ const dealData = (data, time) => {
         }
         // 格式化为 "几月几日" 的字符串
         const formattedDate = momentDate.format('M月D日');
+        if (dateOptions.indexOf(formattedDate) === -1) {
+          dateOptions.push(formattedDate);
+        }
         data[orderIndex][ORDER_EXTRA_INFO.DATE] = formattedDate;
       }
     }
   }
-  // 处理最后一条订单
-  MERGES.push({ s: { r: currentMergeStart }, e: { r: currentMergeStart + count - 1}});
-  downloadFileToExcel(data, `分餐员表格`, '', time);
-  downloadFileToExcel(data, `配送员表格`, '', time );
+  setDateOptions(dateOptions);
+  setDate(dateOptions[0]);
+  setTimeOptions(timeOptions);
+  setTime(timeOptions[0]);
+  setAddressPartArr(addressPartArr);
+  setFileData(_.filter(data, item => item[`订单编号`] !== undefined));
 }
 
-const dealProductsData = (data, time) => {
+const dealProductData = (data, time) => {
   let map = {};
   for (let i = 0; i < data.length; i++) {
     let name = data[i][`商品`];
@@ -181,10 +232,10 @@ const dealProductsData = (data, time) => {
       '数量': map[key],
     };
   }));
-  downloadFileToExcel(dataForChef, `厨师表格`, SHEETHEADER_FOR_CHEF, time);
+  downloadFileToExcel(dataForChef, `厨师表格`, SHEETHEADER_FOR_CHEF, [], time);
 }
 
-const downloadFileToExcel = (data, sheetName, sheetheader, time) => {
+const downloadFileToExcel = (data, sheetName, sheetheader, mergesArr, time) => {
   // sheetheader存在时数据和表头不处理
   // 数据
   const dataForCaterer = sheetheader ? data : _.map(data, item => _.pick(item, _.difference(Object.keys(item), SHEETINFOS[sheetName].useless)));
@@ -205,7 +256,7 @@ const downloadFileToExcel = (data, sheetName, sheetheader, time) => {
       }
     });
     _.map(mergeCol, col => {
-      merges = [...merges, ..._.map(MERGES, obj => ({ s: { ...obj.s, c: col }, e: { ...obj.e, c: col }}))];
+      merges = [...merges, ..._.map(mergesArr, obj => ({ s: { ...obj.s, c: col }, e: { ...obj.e, c: col }}))];
     })
     // 合并单元格
     worksheet['!merges'] = merges;
@@ -217,7 +268,7 @@ const downloadFileToExcel = (data, sheetName, sheetheader, time) => {
   XLSX.writeFile(workbook, `${sheetName}(${time}).xlsx`);
 };
 
-const onImportProductsExcel = (file, time) => {
+const onImportExcel = (file, time, setDateOptions, setTimeOptions, setFileData, setTime, setDate, setAddressPartArr) => {
   // 获取上传的文件对象
   const { files } = file.target;
   // 通过FileReader对象读取文件
@@ -228,46 +279,31 @@ const onImportProductsExcel = (file, time) => {
       // 以二进制流方式读取得到整份excel表格对象
       const workbook = XLSX.read(result, { type: 'binary' });
       let data = []; // 存储获取到的数据
-      // 遍历每张工作表进行读取（这里默认只读取第一张表）
-      for (const sheet in workbook.Sheets) {
-        if (workbook.Sheets.hasOwnProperty(sheet)) {
-          // 利用 sheet_to_json 方法将 excel 转成 json 数据
-          data = data.concat(XLSX.utils.sheet_to_json(workbook.Sheets[sheet]), { raw: true });
-          break; // 如果只取第一张表，就取消注释这行
-        }
-      }
-      dealProductsData(data, time);
-    } catch (e) {
-      console.log(e);
-      // 这里可以抛出文件类型错误不正确的相关提示
-      window.alert(`'文件类型不正确' + ${e}`);
-      return;
-    }
-  };
-  // 以二进制方式打开文件
-  fileReader.readAsBinaryString(files[0]);
-};
+      // 获取第一个工作表
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
 
-const onImportExcel = (file, time) => {
-  // 获取上传的文件对象
-  const { files } = file.target;
-  // 通过FileReader对象读取文件
-  const fileReader = new FileReader();
-  fileReader.onload = event => {
-    try {
-      const { result } = event.target;
-      // 以二进制流方式读取得到整份excel表格对象
-      const workbook = XLSX.read(result, { type: 'binary' });
-      let data = []; // 存储获取到的数据
-      // 遍历每张工作表进行读取（这里默认只读取第一张表）
-      for (const sheet in workbook.Sheets) {
-        if (workbook.Sheets.hasOwnProperty(sheet)) {
-          // 利用 sheet_to_json 方法将 excel 转成 json 数据
-          data = data.concat(XLSX.utils.sheet_to_json(workbook.Sheets[sheet]), { raw: true });
-          break; // 如果只取第一张表，就取消注释这行
+      // 获取工作表数据范围
+      const range = XLSX.utils.decode_range(worksheet['!ref']);
+      const totalRows = range.e.r + 1;
+
+      // 遍历工作表数据，找到订单开始行
+      let rowIndex = 0;
+      while (rowIndex < totalRows) {
+        const cellValue = worksheet[XLSX.utils.encode_cell({ r: rowIndex, c: 0 })]?.v; // 获取第一列的值
+        if (cellValue === '订单编号') {
+          break;
         }
+        // 计数
+        rowIndex++;
       }
-      dealData(data, time);
+
+      // 更新工作表的范围，从rowIndex行开始
+      range.s.r = rowIndex;
+
+      // 将工作表数据转换为 JSON 对象数组
+      data = data.concat(XLSX.utils.sheet_to_json(worksheet, { range }));
+      dealData(data, time, setDateOptions, setTimeOptions, setFileData, setTime, setDate, setAddressPartArr);
     } catch (e) {
       console.log(e);
       // 这里可以抛出文件类型错误不正确的相关提示
