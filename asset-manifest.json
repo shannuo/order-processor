@@ -1,16 +1,16 @@
 {
   "files": {
-    "main.css": "/order-processor/static/css/main.6b9b2542.css",
-    "main.js": "/order-processor/static/js/main.256d60a1.js",
+    "main.css": "/order-processor/static/css/main.c32616fd.css",
+    "main.js": "/order-processor/static/js/main.2c9eb211.js",
     "static/js/787.7c46037b.chunk.js": "/order-processor/static/js/787.7c46037b.chunk.js",
-    "static/media/logo.jpg": "/order-processor/static/media/logo.9430c3dc6b1364c802d6.jpg",
+    "static/media/logo.png": "/order-processor/static/media/logo.53768ef8d580f062e7a4.png",
     "index.html": "/order-processor/index.html",
-    "main.6b9b2542.css.map": "/order-processor/static/css/main.6b9b2542.css.map",
-    "main.256d60a1.js.map": "/order-processor/static/js/main.256d60a1.js.map",
+    "main.c32616fd.css.map": "/order-processor/static/css/main.c32616fd.css.map",
+    "main.2c9eb211.js.map": "/order-processor/static/js/main.2c9eb211.js.map",
     "787.7c46037b.chunk.js.map": "/order-processor/static/js/787.7c46037b.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.6b9b2542.css",
-    "static/js/main.256d60a1.js"
+    "static/css/main.c32616fd.css",
+    "static/js/main.2c9eb211.js"
   ]
 }
