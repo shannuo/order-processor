@@ -1,4 +1,4 @@
-import logo from './logo.jpg';
+import logo from './logo.png';
 import React, { useState } from 'react';
 import DynamicSelect from './components/DynamicSelect';
 import './App.css';
@@ -14,7 +14,7 @@ function App() {
   const [fileData, setFileData] = useState([]);
   const [addressPartArr, setAddressPartArr] = useState([]);
 
-  const handleClickButton = () => {
+  const handleClickButton = (type) => {
     // 按日期和时间段筛选数据
     const filteredData = _.sortBy(_.filter(fileData, item => {
       return item[ORDER_EXTRA_INFO.DATE] === date && item[ORDER_EXTRA_INFO.TIME] === time;
@@ -42,8 +42,11 @@ function App() {
     });
     data.push(userNames);
     // 导出文件；
-    downloadFileToExcel(data, '订单表格', '', merges, `${date}${time}`);
-    dealProductData(productData, `${date}${time}`);
+    if (type === 'order') {
+      downloadFileToExcel(data, '订单表格', '', merges, `${date}${time}`);
+    } else {
+      dealProductData(productData, `${date}${time}`);
+    }
   }
 
   const handleTimeUpdate= (time) => {
@@ -55,35 +58,32 @@ function App() {
   };
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          这是一个订单分解器，根据微信小程序下单助手官方生成的订单，分解成厨师、配送员、分拣员方便查看的三个订单数据。
-        </p>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <div style={{ marginRight: '10px' }}>
-            <label>上传订单明细：</label>
-          </div>
-          <div>
-            <input type='file' accept='.xlsx, .xls' onChange={e => onImportExcel(e, setDateOptions, setTimeOptions, setFileData, setTime, setDate, setAddressPartArr)} />
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <div style={{ marginRight: '10px' }}>
-            <label>选择日期：</label>
-          </div>
-          <DynamicSelect value={date} selectedOptions={dateOptions} onUpdate={handleDateUpdate} />
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <div style={{ marginRight: '10px' }}>
-            <label>选择时间段：</label>
-          </div>
-          <DynamicSelect value={time} selectedOptions={timeOptions} onUpdate={handleTimeUpdate} />
-        </div>
-        <button onClick={handleClickButton}>导出表格</button>
-      </header>
+    <div class="container">
+    <header class="header">
+      <img src={logo} alt="logo" />
+    </header>
+    <div class="description">
+      <p>
+        这是一个订单分解器，根据微信小程序下单助手官方生成的订单，分解成厨师、配送员、分拣员方便查看的三个订单数据。
+      </p>
     </div>
+    <div class="upload-container">
+      <label>订单明细：</label>
+      <input type="file" accept=".xlsx, .xls" onChange={e => onImportExcel(e, setDateOptions, setTimeOptions, setFileData, setTime, setDate, setAddressPartArr)} />
+    </div>
+    <div class="date-container">
+      <label>选择日期：</label>
+      <DynamicSelect value={date} selectedOptions={dateOptions} onUpdate={handleDateUpdate} />
+    </div>
+    <div class="time-container">
+      <label>选择时间段：</label>
+      <DynamicSelect value={time} selectedOptions={timeOptions} onUpdate={handleTimeUpdate} />
+    </div>
+    <div class="button-container">
+      <button onClick={() => handleClickButton('order')}>导出订单表格</button>
+      <button onClick={() => handleClickButton('chef')}>导出厨师表格</button>
+    </div>
+  </div>
   );
 }
 
