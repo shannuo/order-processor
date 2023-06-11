@@ -35,6 +35,12 @@ function App() {
       }
       return result;
     })
+
+    const userNames = addressPartArr.map(addressPart => {
+      const userNameArr = _.filter(filteredData, item => item[ORDER_EXTRA_INFO.ADDRESSPART] === addressPart).map(item => `@${item[`微信昵称/备注名`]}`);
+      return `${addressPart}已完成~ ${userNameArr.join('')}`;
+    });
+    data.push(userNames);
     // 导出文件；
     downloadFileToExcel(data, '订单表格', '', merges, `${date}${time}`);
     dealProductData(productData, `${date}${time}`);
