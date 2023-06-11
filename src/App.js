@@ -105,12 +105,11 @@ const PRODUCT_HEAERS = ['商品', '商品单价（元）', '购买数量'];
 
 const SHEETHEADER = [
   { name: '订单编号', cellWidth: 4, cellMergeNumber: 1, isMerge: 1 },
-  { name: '顾客备注', cellWidth: 20, cellMergeNumber: 1, isMerge: 1 },
   { name: '商品', cellWidth: 10, cellMergeNumber: 1, isMerge: 0 },
-  { name: '商品单价（元）', cellWidth: 6, cellMergeNumber: 1, isMerge: 0 }, 
   { name: '购买数量', cellWidth: 4, cellMergeNumber: 1, isMerge: 0 },
   { name: ORDER_EXTRA_INFO.ADDRESSPART, cellWidth: 10, cellMergeNumber: 1, isMerge: 1 },
   { name: ORDER_EXTRA_INFO.ADDRESS, cellWidth: 10, cellMergeNumber: 1, isMerge: 1 },
+  { name: '顾客备注', cellWidth: 20, cellMergeNumber: 1, isMerge: 1 },
   { name: '微信昵称/备注名', cellWidth: 8, cellMergeNumber: 1, isMerge: 1 },
   { name: '顾客电话', cellWidth: 6, cellMergeNumber: 1, isMerge: 1 },
   { name: '付款状态', cellWidth: 4, cellMergeNumber: 1, isMerge: 1 },
@@ -124,6 +123,7 @@ const SHEETHEADER = [
   { name: '顾客地址', cellWidth: 4, cellMergeNumber: 1, isMerge: 1 },
   { name: '自提地址', cellWidth: 15, cellMergeNumber: 1, isMerge: 1 },
   { name: '自提时间', cellWidth: 10, cellMergeNumber: 1, isMerge: 1 },
+  { name: '商品单价（元）', cellWidth: 6, cellMergeNumber: 1, isMerge: 0 }, 
   { name: '订单金额（元）', cellWidth: 6, cellMergeNumber: 1, isMerge: 1 },
 ];
 
